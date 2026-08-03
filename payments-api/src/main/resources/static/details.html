@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+    <h1>Enterprise Payment Processing Portal</h1>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="create.html">Create Payment</a>
+    </nav>
+</header>
+
+<div class="container">
+    <div id="messageBox"></div>
+
+    <div class="card">
+        <h2>Payment Details</h2>
+        <div id="paymentDetails"></div>
+    </div>
+
+    <div class="card">
+        <h3>Status Actions</h3>
+        <div class="actions-grid" id="actionButtons"></div>
+    </div>
+
+    <div class="card">
+        <h3>Failure Reason</h3>
+        <div id="failureReason">No failure recorded.</div>
+    </div>
+
+    <div class="card">
+        <h3>Payment History</h3>
+        <ul class="timeline" id="historyTimeline"></ul>
+    </div>
+
+    <div class="card receipt-box">
+        <h3>Payment Receipt</h3>
+        <div id="receiptContent"></div>
+        <button class="secondary" onclick="printReceipt()">Download / Print Receipt</button>
+    </div>
+
+    <div class="card">
+        <h3>Refund</h3>
+        <p class="small-text">
+            Refund initiation is shown as a business operation placeholder.
+            Backend refund API can be implemented as the next enhancement.
+        </p>
+        <button class="danger" onclick="showRefundMessage()">Initiate Refund</button>
+        <div id="refundMessage"></div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    const paymentId = getQueryParam("id");
+
+    async function loadDetails() {
+        clearMessage("messageBox");
+        try {
+            const payment = await apiRequest(`${API_BASE}/${paymentId}`);
+            const history = await apiRequest(`${API_BASE}/${paymentId}/history`);
+
+            renderPayment(payment);
+            renderHistory(history);
+            renderActions(payment);
+            renderFailure(payment);
+            renderReceipt(payment);
+        } catch (err) {
+            showMessage("messageBox", `${err.errorCode || "ERROR"} - ${err.message || "Unable to load payment details"}`, "error");
+        }
+    }
+
+    function renderPayment(payment) {
+        document.getElementById("paymentDetails").innerHTML = `
+            <p><strong>Payment ID:</strong> ${payment.id}</p>
+            <p><strong>Idempotency Key:</strong> ${payment.idempotencyKey}</p>
+            <p><strong>Amount:</strong> ${payment.amount} ${payment.currency}</p>
+            <p><strong>Source Account:</strong> ${payment.sourceAccount}</p>
+            <p><strong>Destination Account:</strong> ${payment.destinationAccount}</p>
+            <p><strong>Status:</strong> ${getStatusBadge(payment.status)}</p>
+            <p><strong>Created At:</strong> ${formatDateTime(payment.createdAt)}</p>
+            <p><strong>Updated At:</strong> ${formatDateTime(payment.updatedAt)}</p>
+        `;
+    }
+
+    function renderFailure(payment) {
+        document.getElementById("failureReason").innerHTML =
+            payment.status === "FAILED"
+                ? `<div class="message error"><strong>${payment.errorCode}</strong> - ${payment.errorMessage || "No message available"}</div>`
+                : `<div class="message success">No failure recorded for this payment.</div>`;
+    }
+
+    function renderHistory(history) {
+        const el = document.getElementById("historyTimeline");
+        el.innerHTML = "";
+
+        history.forEach(item => {
+            el.innerHTML += `
+                <li>
+                    <strong>${item.fromStatus || "START"} → ${item.toStatus}</strong><br>
+                    Changed By: ${item.changedBy}<br>
+                    Time: ${formatDateTime(item.changedAt)}<br>
+                    Note: ${item.note || "-"}
+                </li>
+            `;
+        });
+    }
+
+    function renderReceipt(payment) {
+        document.getElementById("receiptContent").innerHTML = `
+            <p><strong>Receipt Number:</strong> RCP-${payment.id}</p>
+            <p><strong>Payment ID:</strong> ${payment.id}</p>
+            <p><strong>Amount:</strong> ${payment.amount} ${payment.currency}</p>
+            <p><strong>Source:</strong> ${payment.sourceAccount}</p>
+            <p><strong>Destination:</strong> ${payment.destinationAccount}</p>
+            <p><strong>Status:</strong> ${payment.status}</p>
+            <p><strong>Generated At:</strong> ${new Date().toLocaleString()}</p>
+        `;
+    }
+
+    function renderActions(payment) {
+        const container = document.getElementById("actionButtons");
+        container.innerHTML = "";
+
+        if (payment.status === "CREATED") {
+            container.innerHTML += `<button class="success" onclick="updateStatus('VALIDATED')">Validate Payment</button>`;
+            container.innerHTML += `<button class="danger" onclick="failPayment()">Fail Payment</button>`;
+        }
+
+        if (payment.status === "VALIDATED") {
+            container.innerHTML += `<button class="warning" onclick="updateStatus('SENT')">Send Payment</button>`;
+            container.innerHTML += `<button class="danger" onclick="failPayment()">Fail Payment</button>`;
+        }
+
+        if (payment.status === "SENT") {
+            container.innerHTML += `<button class="success" onclick="updateStatus('COMPLETED')">Complete Payment</button>`;
+            container.innerHTML += `<button class="danger" onclick="failPayment()">Fail Payment</button>`;
+        }
+
+        if (payment.status === "COMPLETED") {
+            container.innerHTML = `<div class="message success">Payment processing is completed successfully.</div>`;
+        }
+
+        if (payment.status === "FAILED") {
+            container.innerHTML = `<div class="message error">Payment has failed. Review failure reason and consider business refund/retry decision.</div>`;
+        }
+    }
+
+    async function updateStatus(newStatus) {
+        try {
+            await apiRequest(`${API_BASE}/${paymentId}/status`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    newStatus: newStatus,
+                    note: `${newStatus} updated from portal`
+                })
+            });
+            loadDetails();
+        } catch (err) {
+            showMessage("messageBox", `${err.errorCode || "ERROR"} - ${err.message || "Status update failed"}`, "error");
+        }
+    }
+
+    async function failPayment() {
+        const errorCode = prompt("Enter failure error code:", "PROCESSING_ERROR");
+        const errorMessage = prompt("Enter failure message:", "Business validation or network failure");
+
+        if (!errorCode) return;
+
+        try {
+            await apiRequest(`${API_BASE}/${paymentId}/status`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    newStatus: "FAILED",
+                    errorCode: errorCode,
+                    errorMessage: errorMessage,
+                    note: "Marked failed from portal"
+                })
+            });
+            loadDetails();
+        } catch (err) {
+            showMessage("messageBox", `${err.errorCode || "ERROR"} - ${err.message || "Failed to mark payment as FAILED"}`, "error");
+        }
+    }
+
+    function showRefundMessage() {
+        document.getElementById("refundMessage").innerHTML =
+            `<div class="message info">Refund workflow placeholder: create a refund API next, e.g. POST /api/payments/${paymentId}/refund</div>`;
+    }
+
+    loadDetails();
+</script>
+</body>
+</html>

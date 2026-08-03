@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayFlow - Payment Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page-wrapper">
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">💳</span>
+                <h1>PayFlow</h1>
+            </div>
+            <p class="tagline">Secure Payment Processing</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="dashboard-section">
+            <h2>Payment Dashboard</h2>
+            <div class="stats-grid">
+                <div class="stat-card total"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total</div></div>
+                <div class="stat-card created"><div class="stat-value" id="statCreated">0</div><div class="stat-label">Created</div></div>
+                <div class="stat-card validated"><div class="stat-value" id="statValidated">0</div><div class="stat-label">Validated</div></div>
+                <div class="stat-card sent"><div class="stat-value" id="statSent">0</div><div class="stat-label">Sent</div></div>
+                <div class="stat-card completed"><div class="stat-value" id="statCompleted">0</div><div class="stat-label">Completed</div></div>
+                <div class="stat-card failed"><div class="stat-value" id="statFailed">0</div><div class="stat-label">Failed</div></div>
+            </div>
+
+            <div class="search-filter-box">
+                <input type="text" id="searchInput" placeholder="Search by payment ID...">
+                <select id="filterStatus">
+                    <option value="">All</option>
+                    <option value="CREATED">Created</option>
+                    <option value="VALIDATED">Validated</option>
+                    <option value="SENT">Sent</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="FAILED">Failed</option>
+                </select>
+                <button type="button" onclick="filterPayments()">Search</button>
+            </div>
+
+            <div class="payments-table-wrapper">
+                <table class="payments-table">
+                    <thead>
+                    <tr>
+                        <th>Payment ID</th>
+                        <th>Method</th>
+                        <th>Amount</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="payment-form-section">
+            <h2>Create New Payment</h2>
+            <p class="form-subtitle">Choose payment method and submit securely</p>
+            <div id="messageBox"></div>
+
+            <div class="tabs-container">
+                <button class="tab-button active" data-tab="upi" type="button">
+                    <span class="tab-icon">📱</span><span class="tab-label">UPI</span>
+                </button>
+                <button class="tab-button" data-tab="card" type="button">
+                    <span class="tab-icon">💳</span><span class="tab-label">Card</span>
+                </button>
+                <button class="tab-button" data-tab="netbanking" type="button">
+                    <span class="tab-icon">🏦</span><span class="tab-label">Net Banking</span>
+                </button>
+            </div>
+
+            <form id="paymentForm">
+                <div class="form-section">
+                    <h3>Transaction Details</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="amount">Amount</label>
+                            <div class="input-with-icon">
+                                <span class="currency-symbol">₹</span>
+                                <input type="number" id="amount" placeholder="0.00" step="0.01" min="0.01" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="currency">Currency</label>
+                            <select id="currency" required>
+                                <option value="INR" selected>INR — Indian Rupee</option>
+                                <option value="USD">USD — US Dollar</option>
+                                <option value="EUR">EUR — Euro</option>
+                                <option value="GBP">GBP — British Pound</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="upiTab" class="tab-content active">
+                    <div class="form-section">
+                        <h3>UPI Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="payerUpiId">Payer UPI ID (From)</label>
+                                <input type="text" id="payerUpiId" placeholder="e.g. 9036729548@ybl">
+                            </div>
+                            <div class="form-group">
+                                <label for="payeeUpiId">Payee UPI ID (To)</label>
+                                <input type="text" id="payeeUpiId" placeholder="e.g. merchant@okaxis">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cardTab" class="tab-content">
+                    <div class="form-section">
+                        <h3>Card Details</h3>
+                        <div class="form-group">
+                            <label for="cardNumber">Card Number</label>
+                            <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cardholderName">Cardholder Name</label>
+                                <input type="text" id="cardholderName" placeholder="John Doe">
+                            </div>
+                            <div class="form-group">
+                                <label for="cardExpiry">Expiry (MM/YYYY)</label>
+                                <input type="text" id="cardExpiry" placeholder="12/2028" maxlength="7">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cardCvv">CVV</label>
+                                <input type="text" id="cardCvv" placeholder="123" maxlength="4">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="netbankingTab" class="tab-content">
+                    <div class="form-section">
+                        <h3>Net Banking Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bankName">Bank Name</label>
+                                <select id="bankName">
+                                    <option value="SBI">SBI</option>
+                                    <option value="HDFC">HDFC</option>
+                                    <option value="ICICI">ICICI</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="accountType">Account Type</label>
+                                <select id="accountType">
+                                    <option value="Savings">Savings</option>
+                                    <option value="Current">Current</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sourceAccount">Source Account</label>
+                                <input type="text" id="sourceAccount" placeholder="e.g. ACC1001">
+                            </div>
+                            <div class="form-group">
+                                <label for="destinationAccount">Destination Account</label>
+                                <input type="text" id="destinationAccount" placeholder="e.g. ACC2002">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="reference">Reference / Description (Optional)</label>
+                        <textarea id="reference" rows="3" placeholder="e.g. Rent payment"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="resetForm()">Cancel</button>
+                    <button type="submit" class="btn-primary">Pay Now</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
+<div id="detailsModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
