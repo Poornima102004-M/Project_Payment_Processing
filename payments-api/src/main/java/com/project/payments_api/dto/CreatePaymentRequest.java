@@ -4,13 +4,13 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 public class CreatePaymentRequest {
-
     @NotBlank
     @Size(max = 100)
     private String idempotencyKey;
 
+    @NotBlank
     @Size(max = 20)
-    private String paymentMethod;
+    private String paymentMethod; // UPI, CARD, NETBANKING
 
     @NotNull
     @DecimalMin(value = "0.01")
@@ -18,7 +18,7 @@ public class CreatePaymentRequest {
     private BigDecimal amount;
 
     @NotBlank
-    @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be 3 uppercase letters e.g. INR")
+    @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be 3 uppercase letters (e.g. INR)")
     private String currency;
 
     @Size(max = 100)

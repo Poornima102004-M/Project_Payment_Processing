@@ -13,7 +13,6 @@ import java.util.Optional;
 
 @Repository
 public class PaymentRepository {
-
     private final JdbcTemplate jdbcTemplate;
 
     public PaymentRepository(JdbcTemplate jdbcTemplate) {
@@ -41,26 +40,21 @@ public class PaymentRepository {
     };
 
     public Optional<Payment> findById(Long id) {
-        List<Payment> list = jdbcTemplate.query(
-                "SELECT * FROM payments WHERE id = ?", mapper, id);
+        List<Payment> list = jdbcTemplate.query("SELECT * FROM payments WHERE id = ?", mapper, id);
         return list.stream().findFirst();
     }
 
     public Optional<Payment> findByIdempotencyKey(String key) {
-        List<Payment> list = jdbcTemplate.query(
-                "SELECT * FROM payments WHERE idempotency_key = ?", mapper, key);
+        List<Payment> list = jdbcTemplate.query("SELECT * FROM payments WHERE idempotency_key = ?", mapper, key);
         return list.stream().findFirst();
     }
 
     public List<Payment> findAll() {
-        return jdbcTemplate.query(
-                "SELECT * FROM payments ORDER BY created_at DESC", mapper);
+        return jdbcTemplate.query("SELECT * FROM payments ORDER BY created_at DESC", mapper);
     }
 
     public List<Payment> findByStatus(PaymentStatus status) {
-        return jdbcTemplate.query(
-                "SELECT * FROM payments WHERE status = ? ORDER BY created_at DESC",
-                mapper, status.name());
+        return jdbcTemplate.query("SELECT * FROM payments WHERE status = ? ORDER BY created_at DESC", mapper, status.name());
     }
 
     public long insert(Payment p) {
@@ -70,8 +64,7 @@ public class PaymentRepository {
                 idempotency_key, payment_method, amount, currency,
                 payer_upi_id, payee_upi_id, description,
                 source_account, destination_account,
-                status, error_code, error_message,
-                created_at, updated_at
+                status, error_code, error_message, created_at, updated_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -91,9 +84,7 @@ public class PaymentRepository {
                 Timestamp.valueOf(now)
         );
 
-        Long id = jdbcTemplate.queryForObject(
-                "SELECT id FROM payments WHERE idempotency_key = ?",
-                Long.class, p.getIdempotencyKey());
+        Long id = jdbcTemplate.queryForObject("SELECT id FROM payments WHERE idempotency_key = ?", Long.class, p.getIdempotencyKey());
         return id == null ? -1L : id;
     }
 
@@ -103,8 +94,7 @@ public class PaymentRepository {
             SET status = ?, error_code = ?, error_message = ?, updated_at = ?
             WHERE id = ?
             """,
-                status.name(), errorCode, errorMessage,
-                Timestamp.valueOf(LocalDateTime.now()), id
+                status.name(), errorCode, errorMessage, Timestamp.valueOf(LocalDateTime.now()), id
         );
     }
 }
